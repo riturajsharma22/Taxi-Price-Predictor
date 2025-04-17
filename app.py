@@ -14,8 +14,13 @@ location_ids = list(range(1, 265))
 
 @app.route('/')
 def home():
-    return render_template('index.html',
-                           location_ids=location_ids)
+    return render_template(
+        'index.html',
+        location_ids=location_ids,
+        form_data={},               # ← here
+        prediction_text=None        # ← optional, since you also guard on it in the template
+    )
+
 
 @app.route('/predict', methods=['POST'])
 def predict():
