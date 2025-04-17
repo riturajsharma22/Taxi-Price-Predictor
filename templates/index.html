@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Taxi Fare Predictor</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+
+        .card {
+            border-radius: 1rem;
+        }
+
+        .form-floating>.form-control,
+        .form-floating>.form-select {
+            height: calc(3.5rem + 2px);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container py-5">
+        <div class="card shadow-sm mx-auto" style="max-width: 900px;">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <h1 class="display-5"><i class="bi bi-taxi-front-fill text-primary"></i> Taxi Fare Predictor</h1>
+                </div>
+
+                {% if prediction_text %}
+                <div class="alert alert-success text-center" role="alert">
+                    {{ prediction_text }}
+                </div>
+                {% endif %}
+
+                <form method="post" action="/predict">
+
+                    <fieldset class="mb-4">
+                        <legend class="h6 text-muted">Trip Details</legend>
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <select name="VendorID" class="form-select" id="floatingVendor">
+                                        <option value="0" {{ 'selected' if form_data.get('VendorID')=='0' else '' }}>0
+                                        </option>
+                                        <option value="1" {{ 'selected' if form_data.get('VendorID')=='1' else '' }}>1
+                                        </option>
+                                        <option value="2" {{ 'selected' if form_data.get('VendorID')=='2' else '' }}>2
+                                        </option>
+                                    </select>
+                                    <label for="floatingVendor">Vendor</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" name="passenger_count" class="form-control"
+                                        id="floatingPassengers" min="1" max="9"
+                                        value="{{ form_data.get('passenger_count','1') }}">
+                                    <label for="floatingPassengers">Passengers</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="trip_distance" class="form-control"
+                                        id="floatingDistance" value="{{ form_data.get('trip_distance','1.0') }}">
+                                    <label for="floatingDistance">Distance (km)</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <select name="RatecodeID" class="form-select" id="floatingRatecode">
+                                        <option value="1" {{ 'selected' if form_data.get('RatecodeID')=='1' else '' }}>1
+                                        </option>
+                                        <option value="2" {{ 'selected' if form_data.get('RatecodeID')=='2' else '' }}>2
+                                        </option>
+                                    </select>
+                                    <label for="floatingRatecode">Rate Code</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <select name="store_and_fwd_flag" class="form-select" id="floatingStore">
+                                        <option value="N" {{ 'selected' if form_data.get('store_and_fwd_flag')=='N'
+                                            else '' }}>No</option>
+                                        <option value="Y" {{ 'selected' if form_data.get('store_and_fwd_flag')=='Y'
+                                            else '' }}>Yes</option>
+                                    </select>
+                                    <label for="floatingStore">Store & Forward</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="h6 text-muted">Locations & Payment</legend>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <select name="PULocationID" class="form-select" id="floatingPU">
+                                        {% for id in location_ids %}
+                                        <option value="{{ id }}" {{ 'selected' if
+                                            form_data.get('PULocationID')==id|string else '' }}>{{ id }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label for="floatingPU">Pickup ID</label>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-floating">
+                                    <select name="DOLocationID" class="form-select" id="floatingDO">
+                                        {% for id in location_ids %}
+                                        <option value="{{ id }}" {{ 'selected' if
+                                            form_data.get('DOLocationID')==id|string else '' }}>{{ id }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <label for="floatingDO">Dropoff ID</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-floating">
+                                    <select name="payment_type" class="form-select" id="floatingPay">
+                                        <option value="Credit Card" {{ 'selected' if
+                                            form_data.get('payment_type')=='Credit Card' else '' }}>Credit Card</option>
+                                        <option value="Cash" {{ 'selected' if form_data.get('payment_type')=='Cash'
+                                            else '' }}>Cash</option>
+                                    </select>
+                                    <label for="floatingPay">Payment Method</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="mb-4">
+                        <legend class="h6 text-muted">Additional Charges ($)</legend>
+                        <div class="row g-3">
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="extra" class="form-control"
+                                        id="floatingExtra" value="{{ form_data.get('extra','0') }}">
+                                    <label for="floatingExtra">Extra</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="tip_amount" class="form-control"
+                                        id="floatingTip" value="{{ form_data.get('tip_amount','0') }}">
+                                    <label for="floatingTip">Tip</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="tolls_amount" class="form-control"
+                                        id="floatingTolls" value="{{ form_data.get('tolls_amount','0') }}">
+                                    <label for="floatingTolls">Tolls</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="improvement_surcharge" class="form-control"
+                                        id="floatingImp" value="{{ form_data.get('improvement_surcharge','0.3') }}">
+                                    <label for="floatingImp">Imp. Surcharge</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="congestion_surcharge" class="form-control"
+                                        id="floatingCongestion"
+                                        value="{{ form_data.get('congestion_surcharge','2.5') }}">
+                                    <label for="floatingCongestion">Congestion</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-floating">
+                                    <input type="number" step="0.01" name="Airport_fee" class="form-control"
+                                        id="floatingAirport" value="{{ form_data.get('Airport_fee','0') }}">
+                                    <label for="floatingAirport">Airport Fee</label>
+                                </div>
+                            </div>
+                        </div>
+                    </fieldset>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Estimate Fare</button>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer text-center text-muted small">
+                &copy; 2025 Taxi Fare ML Predictor
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
